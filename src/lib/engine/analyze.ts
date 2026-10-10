@@ -1,3 +1,4 @@
+
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { createV1Server, createV2Server } from "../../servers.js";
 import { connectToServer } from "./connect-server.js";
@@ -32,16 +33,34 @@ async function runWorkflow(
       arguments: args,
     });
 
-    const message = (result.content ?? [])
-      .map((item) => (item.type === "text" ? item.text : ""))
-      .filter(Boolean)
-      .join("\n");
+    const content: unknown = result.content;
+
+    const message = Array.isArray(content)
+      ? content
+          .map((item: unknown) => {
+            if (
+              typeof item === "object" &&
+              item !== null &&
+              "type" in item &&
+              item.type === "text" &&
+              "text" in item &&
+              typeof item.text === "string"
+            ) {
+              return item.text;
+            }
+
+            return "";
+          })
+          .filter(Boolean)
+          .join("\n")
+      : "";
 
     return {
       name,
       status: result.isError ? "failed" : "passed",
       message:
-        message || (result.isError ? "Tool call failed" : "Tool call succeeded"),
+        message ||
+        (result.isError ? "Tool call failed" : "Tool call succeeded"),
     };
   } catch (error) {
     return {
@@ -65,6 +84,7 @@ export async function analyzeUpdate(): Promise<AnalysisReport> {
     ]);
 
     const changes = compareTools(oldTools, newTools);
+
     const workflows = [
       {
         name: "Fetch GitHub issue",
@@ -87,15 +107,18 @@ export async function analyzeUpdate(): Promise<AnalysisReport> {
       ]),
     );
 
-    const passed = results.filter((result) => result.status === "passed").length;
+    const passed = results.filter(
+      (result) => result.status === "passed",
+    ).length;
 
     return {
       summary: {
         total: results.length,
         passed,
         failed: results.length - passed,
-        breakingChanges: changes.filter((change) => change.severity === "breaking")
-          .length,
+        breakingChanges: changes.filter(
+          (change) => change.severity === "breaking",
+        ).length,
       },
       changes,
       workflows: results,

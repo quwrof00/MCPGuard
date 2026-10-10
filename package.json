@@ -4,9 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "vitest run",
-    "dev": "tsx src/index.ts",
-    "test:watch": "vitest"
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "test": "vitest run",
+  "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
