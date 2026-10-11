@@ -1,16 +1,16 @@
-# MCP Guard 🛡️
+# MCPGuard
 
 > Prevent AI agents from breaking when tool providers update their MCP servers.
 
-**MCP Guard** is an automated testing and contract validation tool for the Model Context Protocol (MCP). It tests existing agent workflows against tool updates, identifies what breaks, and flags breaking schema changes before tool updates reach production.
+**MCPGuard** is an automated regression testing and contract validation tool for the Model Context Protocol (MCP). It tests existing agent workflows against tool updates, identifies what breaks, and flags breaking schema changes before tool updates reach production.
 
 ---
 
-## 📚 Documentation
+## Documentation
 
-- **[Project Overview & Architecture](file:///d:/mcpguard/PROJECT_OVERVIEW.md)**: Deep dive into the purpose of MCP Guard, how it works, and everything built so far.
-- **[Hackathon MVP Status & What's Left](file:///d:/mcpguard/WHAT_IS_LEFT.md)**: Gap analysis against the vision, roadmap, and remaining tasks to 100% completion.
-- **[Implementation Roadmap & TODOS](file:///d:/mcpguard/TODOS.md)**: Detailed code guides and previous milestones.
+- **[Collaborator Guide & Architecture Reference](file:///d:/mcpguard/COLLABORATOR_GUIDE.md)**: Complete technical handover, system design decisions, API reference, and developer how-to-use walkthrough.
+- **[Project Overview & Architecture](file:///d:/mcpguard/PROJECT_OVERVIEW.md)**: Deep dive into the purpose of MCPGuard, how it works, and core concepts.
+- **[Hackathon MVP Status & What's Left](file:///d:/mcpguard/WHAT_IS_LEFT.md)**: Feature scorecard and implementation details.
 
 ---
 
