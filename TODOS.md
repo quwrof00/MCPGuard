@@ -4,13 +4,18 @@ This document outlines the implementation roadmap for the next development phase
 
 ---
 
-## 📋 Overview of Next Steps
+## 📋 Overview of Roadmap & Sponsor Integrations
 
-Currently, the core inspection, schema comparison, and mock servers are built and tested. The next milestone is to assemble these components into an end-to-end system:
+### Core Engine & UI (Completed ✅)
+1. **[TODO 1] Central Analysis Engine** (`src/lib/engine/analyze.ts`): ✅ Completed — Orchestrates discovery, schema diffing, dependency tracing, workflow replay, and AI fix verification into a unified pipeline.
+2. **[TODO 2] Next.js API Routes** (`src/app/api/analyze/route.ts` & `src/app/api/verify-fix/route.ts`): ✅ Completed — Exposes analysis and two-stage fix verification over HTTP.
+3. **[TODO 3] Web Dashboard** (`src/app/page.tsx`): ✅ Completed — Interactive dark-mode dashboard with real-time metrics, schema diff visualizer, chained execution logs, and interactive AI fix application.
 
-1. **[TODO 1] Central Analysis Engine** (`src/lib/engine/analyze.ts`): Orchestrates discovery, schema diffing, and workflow replay into a single pipeline.
-2. **[TODO 2] Next.js API Route** (`src/app/api/analyze/route.ts`): Exposes the analysis pipeline over HTTP.
-3. **[TODO 3] Web Dashboard** (`src/app/page.tsx`): Provides an interactive UI to trigger analysis and view breaking changes and workflow replay results.
+### neatHack Sponsor Integrations (Planned & Implemented 🚀)
+4. **[TODO 4] neatlogs Integration (Agent Observability & Lifecycle Tracing)**: ✅ Core Implemented — Traces every agent run, tool call, error, and fix verification with latency and pass/fail status.
+5. **[TODO 5] Entire CLI Integration (Repository Context, Git Checkpoints & entire-graph)**: 🔄 In Progress — Git-native session context capture behind AI code migrations and repository relationship mapping.
+6. **[TODO 6] cfo.ai Integration (Financial Model, Unit Economics & Runway Strategy)**: ✅ Completed (`BUSINESS_PLAN.md`) — Financial model covering SaaS pricing tiers, inference COGS, unit margins (>90%), and 18-month runway.
+
 
 ---
 
@@ -432,8 +437,86 @@ export default function Home() {
 
 ---
 
-## 🧪 Verification Plan
-Once TODOs 1–3 are implemented:
-1. Add an integration test `tests/analyze.test.ts` to verify `analyzeUpdate()` returns 2 executions, 1 pass (baseline), 1 fail (candidate), and 2 breaking changes.
-2. Verify that running `npx vitest run` passes all test suites.
-3. Start the Next.js dev server with `npm run dev` and click **Run analysis** to verify that the UI renders metrics, schema diffs, and workflow execution summaries correctly.
+## 🧪 Core Verification (Status: Passed ✅)
+All core requirements (TODOs 1–3) are implemented and verified:
+1. `tests/schema-diff.test.ts` (unit tests for schema comparator)
+2. `tests/guard.test.ts` (in-memory MCP transport and baseline vs candidate failure check)
+3. `tests/inspect-server.test.ts` (protocol-level tool inspection)
+4. `tests/analyze.test.ts` (workflow replay, cascading failure diagnostics, fix verification)
+Run verification: `npx vitest run` — **4 suites, 6 tests passing (100%)**.
+
+---
+
+## 🛰️ TODO 4: neatlogs Integration (Agent Observability & Lifecycle Tracing)
+
+### 💡 What We Think & Strategic Fit
+MCP Guard's core mission is ensuring agent reliability across tool updates. In production, when agents run multi-step tool workflows, developers need full visibility into every tool call, latency, schema validation failure, and recovery step.
+**neatlogs** is a dedicated agent tracing platform. By integrating `neatlogs`:
+- Every `mcp-compatibility-analysis` run is recorded as an observable root trace.
+- Individual workflow step replays and tool executions are tagged with latency and status.
+- Fix verification runs are logged under the `GUARDRAIL` span kind, providing undeniable evidence of whether an AI fix unblocked the downstream workflow.
+- Judges and developers can view the live telemetry stream in their Neatlogs workspace.
+
+### 📐 Implementation Architecture
+1. **SDK Module** (`src/lib/telemetry.ts`):
+   - Wrapper using `init()`, `trace()`, and `flush()` from `neatlogs`.
+   - Built-in graceful fallback (`disableExport: true`) for offline/local environments without an API key, guaranteeing zero downtime.
+2. **API Route Instrumentation**:
+   - `/api/analyze` (POST) wrapped in `withTrace("mcp-compatibility-analysis", "WORKFLOW", ...)`
+   - `/api/verify-fix` (POST) wrapped in `withTrace("mcp-verify-fix", "GUARDRAIL", ...)`
+   - Auto-flush on completion via `await flushTelemetry()`.
+3. **Configuration**:
+   - `NEATLOGS_API_KEY` defined in `.env.example` and `.env`.
+
+### 🚀 Status & Deliverables
+- [x] Package installed: `neatlogs@1.1.28`
+- [x] Telemetry wrapper implemented: `src/lib/telemetry.ts`
+- [x] API routes instrumented: `src/app/api/analyze/route.ts` & `src/app/api/verify-fix/route.ts`
+- [x] Environment configuration updated: `.env.example`
+- [x] All 6 unit tests passing with telemetry enabled
+
+---
+
+## 🌲 TODO 5: Entire CLI Integration (Repository Context, Git Checkpoints & entire-graph)
+
+### 💡 What We Think & Strategic Fit
+When MCP Guard synthesizes fixes or migrates tool parameters (e.g. `{ issue_id: "42" }` ➔ `{ issue_number: 42 }`), modifying agent prompt configurations or tool-calling client code introduces changes across the codebase.
+**Entire (`entire.io`)** bridges Git commits with agent reasoning:
+- **Checkpoints**: Entire attaches the exact prompt, schema diff, and verification proof directly behind each Git commit or remediation pull request.
+- **entire-graph**: Generates a symbol dependency graph mapping all MCP tool usages across the repo, showing exactly which files depend on a mutated tool.
+- Provides cryptographic/auditable provenance: proving that a human-in-the-loop approved an automated MCP migration verified by MCP Guard.
+
+### 📐 Implementation Architecture
+1. **CLI Installation**:
+   - Install Entire CLI (`irm https://entire.io/install.ps1 | iex` on Windows / `curl -fsSL https://entire.io/install.sh | bash` on Linux/macOS).
+2. **Repository Configuration**:
+   - Execute `entire enable` in `d:\mcpguard` to activate Git hooks.
+   - Configure session tracking for automated test/fix cycles.
+3. **Context Graph (`entire-graph`)**:
+   - Generate repository relationship maps showing MCP server connections, tracer dependencies, and API handlers.
+   - Document graph insights in submission materials.
+
+### 🚀 Status & Deliverables
+- [x] PowerShell installer initiated / CLI binary configured
+- [x] Architectural plan and collaborator documentation established
+- [ ] Run `entire enable` and capture checkpoint for neatHack submission commit
+- [ ] Document `entire-graph` dependency topology in `ENTIRE_CONTEXT.md`
+
+---
+
+## 📈 TODO 6: cfo.ai Integration (Financial Model, Unit Economics & Runway Strategy)
+
+### 💡 What We Think & Strategic Fit
+Hackathons reward projects that solve real problems with viable business models. AI agent failure is an expensive enterprise problem—silent tool drift can halt automated customer support or corrupt database writes.
+**cfo.ai** provides startup runway modeling, unit economics analysis, and pricing optimization. We modeled MCP Guard as a high-margin B2B Developer Infrastructure SaaS:
+- **High Gross Margins (>92%)**: Analysis runs execute in-memory; Groq Llama 3 inference costs less than $0.0002 per synthesized fix.
+- **Natural Tiered Upsell**: Free open-core CLI for solo devs ➔ $49/mo Pro for teams needing CI/CD and neatlogs traces ➔ $299/mo Enterprise for dedicated sandboxes.
+- **Low Capital Intensity**: Reaches cash-flow positive in Month 11 with only $200k in initial angel funding.
+
+### 📐 Deliverables
+- [x] Full business plan written: `BUSINESS_PLAN.md`
+- [x] Pricing architecture: Developer ($0), Team ($49/mo), Enterprise ($299/mo + usage)
+- [x] Unit economics breakdown: Blended COGS of ~$0.00030 per analysis run
+- [x] 18-month financial forecast: Growing to $127K MRR ($1.53M ARR) by Month 18
+- [x] Ready to import directly into the `cfo.ai/neathacks` dashboard
+
