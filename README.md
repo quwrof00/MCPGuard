@@ -9,7 +9,8 @@
 ## 📚 Documentation
 
 - **[Project Overview & Architecture](file:///d:/mcpguard/PROJECT_OVERVIEW.md)**: Deep dive into the purpose of MCP Guard, how it works, and everything built so far.
-- **[Implementation Roadmap & TODOS](file:///d:/mcpguard/TODOS.md)**: Next steps for building the central analysis engine (`analyze.ts`), the Next.js API route, and the interactive web dashboard.
+- **[Hackathon MVP Status & What's Left](file:///d:/mcpguard/WHAT_IS_LEFT.md)**: Gap analysis against the vision, roadmap, and remaining tasks to 100% completion.
+- **[Implementation Roadmap & TODOS](file:///d:/mcpguard/TODOS.md)**: Detailed code guides and previous milestones.
 
 ---
 
