@@ -1,9 +1,9 @@
 
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { createV1Server, createV2Server } from "../../servers.js";
-import { connectToServer } from "./connect-server.js";
-import { inspectServer } from "./inspect-server.js";
-import { compareTools, type SchemaChange } from "./schema-diff.js";
+import { createV1Server, createV2Server } from "../../servers";
+import { connectToServer } from "./connect-server";
+import { inspectServer } from "./inspect-server";
+import { compareTools, type SchemaChange } from "./schema-diff";
 
 export type WorkflowResult = {
   name: string;
