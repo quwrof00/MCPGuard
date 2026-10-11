@@ -8,9 +8,11 @@
 
 ## Documentation
 
-- **[Collaborator Guide & Architecture Reference](file:///d:/mcpguard/COLLABORATOR_GUIDE.md)**: Complete technical handover, system design decisions, API reference, and developer how-to-use walkthrough.
-- **[Project Overview & Architecture](file:///d:/mcpguard/PROJECT_OVERVIEW.md)**: Deep dive into the purpose of MCPGuard, how it works, and core concepts.
-- **[Hackathon MVP Status & What's Left](file:///d:/mcpguard/WHAT_IS_LEFT.md)**: Feature scorecard and implementation details.
+- **[Collaborator Guide & Architecture Reference](COLLABORATOR_GUIDE.md)**: Technical handover, system design, API reference, and developer walkthrough.
+- **[Project Overview](PROJECT_OVERVIEW.md)**: What MCP Guard does, the pipeline, and where each module lives.
+- **[Hackathon MVP Status](WHAT_IS_LEFT.md)**: Feature scorecard. The hackathon checklist is complete.
+- **[Implementation Roadmap](TODOS.md)**: Engine, dashboard, neatlogs, Entire, and the cfo.ai model.
+- **[entire-graph topology](ENTIRE_CONTEXT.md)**: Import graph, blast radius, and workflow-to-tool edges.
 
 ---
 

@@ -1,127 +1,111 @@
-# MCP Guard — Project Overview & Architecture
+# MCP Guard — Project Overview
 
-## 🎯 What is MCP Guard?
+**MCP Guard** catches agent breakages before an MCP tool update ships. It diffs the baseline and candidate tool schemas, replays saved multi-step workflows against both servers, explains the failed step, and proposes a payload migration a person can apply and re-run.
 
-**MCP Guard** is an automated testing and contract validation tool designed to prevent AI agents from breaking when the tools they rely on are updated.
+Agents call MCP servers for real actions. A rename or a type change (`issue_id: string` to `issue_number: number`) fails the first step and starves every step after it. MCP Guard runs that upgrade against the workflows already saved in the repo.
 
-Modern AI agents depend heavily on **Model Context Protocol (MCP)** servers to perform real-world actions—such as searching codebases, filing tickets, and executing database queries. When tool providers update their MCP servers (e.g., renaming a parameter, changing data types, or adding required fields), agent workflows break silently in production.
+## Pipeline
 
-MCP Guard catches these breakages before updates reach production by:
-1. **Inspecting tool schemas** across server versions.
-2. **Detecting breaking changes** via semantic contract diffing.
-3. **Replaying saved agent workflows** against both baseline and candidate servers to verify runtime behavior.
-4. **Providing actionable reports** that pinpoint exactly what broke and why.
-
----
-
-## 💡 The Core Problem: Silent Tool Drift
-
-Consider an autonomous coding agent programmed to fetch GitHub issues.
-- **In V1**: The tool is `get_issue` expecting `{ issue_id: "42" }` (a string).
-- **In V2**: The tool developer renames the parameter to `{ issue_number: 42 }` (a number).
-
-Because AI prompts and tool configurations expect the V1 schema, the agent fails at runtime with schema validation errors. MCP Guard simulates this exact upgrade path, catches the breaking parameter rename, and verifies that the existing workflow fails on V2 while succeeding on V1.
-
----
-
-## 🏗️ Architecture & What We've Built So Far
-
-```
-┌────────────────────────────────────────────────────────┐
-│                      MCP Guard                         │
-│                                                        │
-│  ┌──────────────────┐            ┌──────────────────┐  │
-│  │  MCP Server V1   │            │  MCP Server V2   │  │
-│  │ (Baseline Mock)  │            │ (Candidate Mock) │  │
-│  └────────┬─────────┘            └────────┬─────────┘  │
-│           │                               │            │
-│           ▼                               ▼            │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │       In-Memory Client Transports                │  │
-│  │       (src/lib/engine/connect-server.ts)         │  │
-│  └────────────────────────┬─────────────────────────┘  │
-│                           │                            │
-│           ┌───────────────┴───────────────┐            │
-│           ▼                               ▼            │
-│  ┌──────────────────┐            ┌──────────────────┐  │
-│  │ Tool Inspector   │            │ Workflow Runner  │  │
-│  │ (inspect-server) │            │ (Replay Engine)  │  │
-│  └────────┬─────────┘            └────────┬─────────┘  │
-│           ▼                               │            │
-│  ┌──────────────────┐                     │            │
-│  │   Schema Diff    │                     │            │
-│  │  (schema-diff)   │                     │            │
-│  └────────┬─────────┘                     │            │
-│           │                               │            │
-│           └───────────────┬───────────────┘            │
-│                           ▼                            │
-│              Unified Analysis Report                   │
-└────────────────────────────────────────────────────────┘
+```text
+Dashboard (src/app/page.tsx)
+    │  POST /api/analyze          POST /api/verify-fix         POST /api/test-tool
+    ▼
+API routes (traced with neatlogs)
+    │
+    ▼
+analyzeUpdate / verifyFix                         src/lib/engine/analyze.ts
+    ├── createV1Server / createV2Server           src/servers.ts
+    ├── connectToServer                           in-memory MCP transport
+    ├── inspectServer                             listTools
+    ├── compareTools                              breaking vs non-breaking
+    ├── traceDependencies                         which workflows use a changed tool
+    └── runChainedWorkflow
+            └── synthesizeFix                     rules, then Groq if no rule matches
 ```
 
-Here is a breakdown of the existing modules in the codebase:
+One analysis run inspects both mock servers, diffs their tools, traces blast radius, and replays every saved workflow on the baseline and on the candidate. If a step fails, later steps in that chain are skipped. Fix verification is two stages: the edited payload is called alone on V2, then the full workflow is replayed with that payload injected.
 
-### 1. Mock MCP Servers (`src/servers.ts`)
-Implements two test servers using `@modelcontextprotocol/sdk`:
-- **`createV1Server()`**: Exposes `get_issue` with `{ issue_id: z.string() }` (`github-mock` v1.0.0).
-- **`createV2Server()`**: Exposes `get_issue` with `{ issue_number: z.number() }` (`github-mock` v2.0.0).
-This provides a reproducible testbed for detecting parameter renames and type mutations.
+## Modules
 
-### 2. In-Memory Transport Connector (`src/lib/engine/connect-server.ts`)
-- Leverages `InMemoryTransport.createLinkedPair()` to connect MCP clients and servers in-process.
-- Avoids spawning subprocesses or listening on network ports, making inspections and tests execute in milliseconds.
+### Mock servers — `src/servers.ts`
 
-### 3. Server Capability Inspector (`src/lib/engine/inspect-server.ts`)
-- Calls `client.listTools()` via the standard MCP protocol.
-- Extracts tool names, descriptions, and JSON Schema definitions into normalized data structures.
+`createV1Server()` and `createV2Server()` are in-process `github-mock` servers (1.0.0 and 2.0.0). V2 renames `issue_id` to `issue_number: number` on `get_issue` and `post_comment`, and adds optional `notify_author` on `post_comment`. `get_user` and `list_repositories` stay the same, so one workflow stays green on purpose.
 
-### 4. Semantic Schema Comparator (`src/lib/engine/schema-diff.ts`)
-Analyzes differences between tool schemas across versions, classifying changes by severity:
-- **`tool_removed`** → **Breaking**
-- **`parameter_removed`** → **Breaking** if previously required; **Non-breaking** if optional.
-- **`parameter_added`** → **Breaking** if added as required; **Non-breaking** if optional.
-- **`type_changed`** → **Breaking**
-- **`required_added`** → **Breaking**
+### Engine — `src/lib/engine/`
 
-### 5. Automated Test Suite (`tests/`)
-Built with Vitest, currently 100% passing across 3 suites:
-- **`tests/schema-diff.test.ts`**: Verifies schema comparison logic for parameter renames, type changes, and optional additions.
-- **`tests/inspect-server.test.ts`**: Verifies end-to-end inspection of live V1 and V2 servers and catches the breaking parameter changes.
-- **`tests/guard.test.ts`**: Replays a V1 agent tool call against both V1 (passes) and V2 (fails with schema error), proving the core guard mechanism.
+| Module | Role |
+|---|---|
+| `connect-server.ts` | Links a client and server with `InMemoryTransport`. No ports and no child processes. |
+| `inspect-server.ts` | Calls `listTools` and normalizes name, description, and JSON Schema. |
+| `schema-diff.ts` | Classifies `tool_removed`, `parameter_removed`, `parameter_added`, `type_changed`, and `required_added` as breaking or non-breaking. |
+| `tracer.ts` | Marks a saved workflow at risk when any of its tools has a breaking change. |
+| `fixer.ts` | Rewrites arguments for renames, type coercions, and newly required fields. High confidence when a rule matches. |
+| `llm.ts` | Groq `llama-3.1-8b-instant` fallback. Returns nothing if `GROQ_API_KEY` is missing or the call fails. |
+| `analyze.ts` | `analyzeUpdate()` builds the report. `verifyFix()` runs the two-stage check. |
 
-To run the existing test suite:
-```bash
-npx vitest run
-```
+### Workflows — `src/lib/workflows/store.ts`
 
----
+Three saved contracts: triage (`get_issue` → `get_user` → `post_comment`), org explore (`list_repositories` → `get_user`), and a release comment (`post_comment`). The first and third break on V2. The second does not.
 
-## 📂 Current Directory Structure
+### HTTP and UI
+
+- `POST /api/analyze` — full report: summary, schema changes, workflow traces, suggested fixes. Wrapped in a neatlogs `WORKFLOW` span.
+- `POST /api/verify-fix` — two-stage verification. Wrapped in a `GUARDRAIL` span.
+- `POST /api/test-tool` — one tool call on the V2 server for the failure-taxonomy sandbox.
+- `src/app/page.tsx` — dashboard sections: overview, pipeline, benchmarks, failure taxonomy, integration snippets, and the live audit with apply-and-verify.
+
+Telemetry lives in `src/lib/telemetry.ts`. Without `NEATLOGS_API_KEY` it initializes neatlogs with export disabled, so local runs still finish.
+
+## Repository layout
 
 ```text
 mcpguard/
-├── package.json                   # Project scripts and dependencies
-├── tsconfig.json                  # TypeScript compiler options
 ├── src/
-│   ├── servers.ts                 # Mock MCP v1 & v2 servers (GitHub tool)
+│   ├── servers.ts
+│   ├── app/
+│   │   ├── page.tsx
+│   │   ├── layout.tsx
+│   │   ├── globals.css
+│   │   └── api/{analyze,verify-fix,test-tool}/route.ts
 │   └── lib/
-│       └── engine/
-│           ├── connect-server.ts  # In-memory client-server transport utility
-│           ├── inspect-server.ts  # MCP listTools inspector
-│           └── schema-diff.ts     # AST / JSON Schema diff & severity classifier
+│       ├── telemetry.ts
+│       ├── engine/
+│       │   ├── analyze.ts
+│       │   ├── connect-server.ts
+│       │   ├── inspect-server.ts
+│       │   ├── schema-diff.ts
+│       │   ├── tracer.ts
+│       │   ├── fixer.ts
+│       │   └── llm.ts
+│       └── workflows/store.ts
 ├── tests/
-│   ├── guard.test.ts              # Agent workflow replay test
-│   ├── inspect-server.test.ts     # Live server inspection integration test
-│   └── schema-diff.test.ts        # Schema comparator unit tests
-├── TODOS.md                       # Comprehensive implementation plan for next phase
-└── PROJECT_OVERVIEW.md            # This document
+│   ├── schema-diff.test.ts
+│   ├── inspect-server.test.ts
+│   ├── guard.test.ts
+│   └── analyze.test.ts
+├── PROJECT_OVERVIEW.md
+├── TODOS.md
+├── WHAT_IS_LEFT.md
+├── ENTIRE_CONTEXT.md
+├── COLLABORATOR_GUIDE.md
+└── BUSINESS_PLAN.md
 ```
 
----
+## Tests
 
-## 🚀 What's Next?
+`npx vitest run` — 4 files, 6 tests, all passing:
 
-Refer to [TODOS.md](file:///d:/mcpguard/TODOS.md) for detailed tasks, architecture, and code templates for the upcoming phase:
-1. **`src/lib/engine/analyze.ts`**: Central analysis orchestrator producing unified reports.
-2. **`src/app/api/analyze/route.ts`**: Next.js API route exposing analysis runs over HTTP.
-3. **`src/app/page.tsx`**: Interactive dashboard for viewing breaking changes and workflow replay status.
+- schema comparator
+- live inspection of V1 and V2
+- in-memory transport, baseline pass, candidate failure
+- chained replay, failure diagnostics, and fix verification
+
+## Sponsor integrations
+
+| Integration | Where it lives |
+|---|---|
+| neatlogs | `src/lib/telemetry.ts`, analyze and verify-fix routes |
+| Entire CLI + entire-graph | Git and Cursor hooks, [ENTIRE_CONTEXT.md](ENTIRE_CONTEXT.md) |
+| cfo.ai model | [BUSINESS_PLAN.md](BUSINESS_PLAN.md) |
+
+The dependency map, blast radius, and workflow-to-tool edges are in [ENTIRE_CONTEXT.md](ENTIRE_CONTEXT.md). Implementation status is in [WHAT_IS_LEFT.md](WHAT_IS_LEFT.md). The roadmap checkboxes are in [TODOS.md](TODOS.md).

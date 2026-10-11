@@ -1,8 +1,8 @@
-# MCP Guard — Hackathon MVP Status: 100% Complete 🎉
+# MCP Guard — Hackathon MVP Status: 100% Complete
 
-## 🎯 Have We Reached the Hackathon MVP?
+## Have we reached the hackathon MVP?
 
-**YES! All 7 pillars and Hackathon MVP requirements are 100% implemented, tested, and working.**
+Yes. All 7 pillars are implemented and covered by tests. The three sponsor integrations (neatlogs, Entire, cfo.ai) are in place as well. The current architecture is described in [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md). The roadmap checkboxes are in [TODOS.md](TODOS.md).
 
 ---
 
@@ -22,13 +22,17 @@
 
 ## 🧪 Verification & Test Results
 
-- **Unit & Integration Tests**: `npx vitest run` — **4 suites, 6 tests passing (100%)**
-  - `tests/schema-diff.test.ts` (tool schema comparator unit tests)
-  - `tests/guard.test.ts` (in-memory MCP transport and baseline vs candidate failure check)
+- **Unit and integration tests**: `npx vitest run` — **4 files, 6 tests passing** (re-run while closing the Entire work).
+  - `tests/schema-diff.test.ts` (tool schema comparator)
+  - `tests/guard.test.ts` (in-memory transport and baseline vs candidate failure)
   - `tests/inspect-server.test.ts` (protocol-level tool inspection)
   - `tests/analyze.test.ts` (multi-step workflow replay, failure diagnostics, and fix verification)
-- **Production Build**: `npx next build` compiles cleanly with static and dynamic API routes (`/api/analyze`, `/api/verify-fix`).
-- **Live Server**: `npm run dev` running smoothly on `http://localhost:3000`.
+- **Sponsor integrations**
+  - neatlogs traces on `/api/analyze` and `/api/verify-fix` (`src/lib/telemetry.ts`)
+  - Entire CLI 0.11.4 enabled for Cursor; entire-graph v0.4.0 topology in [ENTIRE_CONTEXT.md](ENTIRE_CONTEXT.md)
+  - Pricing and runway model in [BUSINESS_PLAN.md](BUSINESS_PLAN.md)
+
+Nothing on the hackathon checklist is still open. The next commit is what writes the Entire checkpoint ref, because the git hooks installed by `entire enable` attach it at commit time.
 
 ---
 

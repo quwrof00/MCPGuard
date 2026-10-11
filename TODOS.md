@@ -1,6 +1,6 @@
-# MCP Guard — Implementation Roadmap (TODOS)
+# MCP Guard — Implementation Roadmap (TODOS) 
 
-This document outlines the implementation roadmap for the next development phase of **MCP Guard**. It provides the architecture, complete code implementations, and design details for a collaborator to continue seamlessly.
+This document is the implementation record for **MCP Guard**. Every item below is done. The code samples in TODO 1–3 are the original sketches; the shipped engine, routes, and dashboard have since grown past them. Current behavior is in [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md).
 
 ---
 
@@ -13,7 +13,7 @@ This document outlines the implementation roadmap for the next development phase
 
 ### neatHack Sponsor Integrations (Planned & Implemented 🚀)
 4. **[TODO 4] neatlogs Integration (Agent Observability & Lifecycle Tracing)**: ✅ Core Implemented — Traces every agent run, tool call, error, and fix verification with latency and pass/fail status.
-5. **[TODO 5] Entire CLI Integration (Repository Context, Git Checkpoints & entire-graph)**: 🔄 In Progress — Git-native session context capture behind AI code migrations and repository relationship mapping.
+5. **[TODO 5] Entire CLI Integration (Repository Context, Git Checkpoints & entire-graph)**: ✅ Completed — Entire CLI 0.11.4 enabled for Cursor, entire-graph v0.4.0 indexed, topology written to `ENTIRE_CONTEXT.md`.
 6. **[TODO 6] cfo.ai Integration (Financial Model, Unit Economics & Runway Strategy)**: ✅ Completed (`BUSINESS_PLAN.md`) — Financial model covering SaaS pricing tiers, inference COGS, unit margins (>90%), and 18-month runway.
 
 
@@ -490,17 +490,19 @@ When MCP Guard synthesizes fixes or migrates tool parameters (e.g. `{ issue_id: 
 1. **CLI Installation**:
    - Install Entire CLI (`irm https://entire.io/install.ps1 | iex` on Windows / `curl -fsSL https://entire.io/install.sh | bash` on Linux/macOS).
 2. **Repository Configuration**:
-   - Execute `entire enable` in `d:\mcpguard` to activate Git hooks.
-   - Configure session tracking for automated test/fix cycles.
+   - `entire enable --agent cursor` activates Git hooks and Cursor session hooks in this repo.
+   - Checkpoints use the git-refs backend (`.entire/settings.json`).
 3. **Context Graph (`entire-graph`)**:
    - Generate repository relationship maps showing MCP server connections, tracer dependencies, and API handlers.
    - Document graph insights in submission materials.
 
 ### 🚀 Status & Deliverables
-- [x] PowerShell installer initiated / CLI binary configured
-- [x] Architectural plan and collaborator documentation established
-- [ ] Run `entire enable` and capture checkpoint for neatHack submission commit
-- [ ] Document `entire-graph` dependency topology in `ENTIRE_CONTEXT.md`
+- [x] Entire CLI 0.11.4 installed (`entire.exe` in the user local bin; checksum verified against the v0.11.4 release)
+- [x] `entire enable --agent cursor` wrote `.entire/settings.json` (git-refs checkpoints) and the git hooks that attach an `Entire-Checkpoint` trailer on commit
+- [x] entire-graph v0.4.0 installed; `entire graph init-agents` wrote `.entire/graph-agent.md`. The generated `AGENTS.md`, `CLAUDE.md`, and `.cursor/hooks.json` were removed afterward
+- [x] Dependency topology documented in `ENTIRE_CONTEXT.md` from `entire graph snapshot` and `entire graph impact`
+
+The checkpoint ref itself is created by the post-commit hook on the next commit. Until that commit exists, `entire checkpoint list` has nothing to show.
 
 ---
 
