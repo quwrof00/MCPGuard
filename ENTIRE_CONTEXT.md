@@ -88,6 +88,6 @@ Mock servers in `src/servers.ts`:
 
 ## Checkpoint setup
 
-`entire enable --agent cursor` wrote `.entire/settings.json` (checkpoints stored as git refs) and the git hooks `prepare-commit-msg`, `commit-msg`, `post-commit`, `post-rewrite`, and `pre-push`, bound to `entire.exe`. The Cursor hook file and the `AGENTS.md` / `CLAUDE.md` instruction files were removed after the graph was generated. The plugin guide remains at `.entire/graph-agent.md`.
+`.entire/settings.json` configures Git-ref checkpoints. This checked-in topology documents an earlier Entire graph run; refresh it with the commands in [HACKATHON_EVIDENCE.md](HACKATHON_EVIDENCE.md) on a machine where the Entire CLI is installed.
 
-A checkpoint ref is written when the next commit lands. The post-commit hook condenses the session only if that commit carries an `Entire-Checkpoint` trailer.
+Do not claim a new checkpoint until an Entire-generated checkpoint ref exists and can be opened by a judge.
