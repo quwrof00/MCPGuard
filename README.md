@@ -28,6 +28,37 @@ MCP tools are contracts. A parameter rename, a tightened type, or a new required
 
 ## Architecture
 
+```mermaid
+flowchart TD
+  UI[Testing workspace] --> A[POST /api/analyze]
+  UI --> T[POST /api/test-tool]
+  UI --> V[POST /api/verify-fix]
+  UI --> F[POST /api/ai-fix]
+  UI --> E[POST /api/evidence-run]
+
+  A --> I[Inspect MCP contracts]
+  I --> D[Schema diff]
+  D --> R[Trace workflow dependencies]
+  R --> W[Replay saved workflows]
+  W --> S[Deterministic repair synthesis]
+  S -->|No safe rule match| G[Groq fallback]
+  S -->|Suggested repair| V
+  G --> V
+
+  V --> U[Isolated candidate tool test]
+  U --> C[Downstream workflow replay]
+  E --> A
+  E --> V
+
+  A -. audit trace .-> N[neatlogs]
+  V -. verification trace .-> N
+  F -. fallback trace .-> N
+  G -. AI call trace .-> N
+
+  X[Entire Graph] -. dependency and impact context .-> A
+  B[cfo.ai business model] -. pricing and runway evidence .-> UI
+```
+
 ```text
 Testing workspace
   -> /api/analyze
