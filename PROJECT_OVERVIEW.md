@@ -1,111 +1,57 @@
-# MCP Guard — Project Overview
+# MCPGuard Project Overview
 
-**MCP Guard** catches agent breakages before an MCP tool update ships. It diffs the baseline and candidate tool schemas, replays saved multi-step workflows against both servers, explains the failed step, and proposes a payload migration a person can apply and re-run.
+MCPGuard is a contract-regression and recovery system for Model Context Protocol servers. It helps teams evaluate a tool-server update before agent workflows are exposed to it.
 
-Agents call MCP servers for real actions. A rename or a type change (`issue_id: string` to `issue_number: number`) fails the first step and starves every step after it. MCP Guard runs that upgrade against the workflows already saved in the repo.
-
-## Pipeline
+## The recovery loop
 
 ```text
-Dashboard (src/app/page.tsx)
-    │  POST /api/analyze          POST /api/verify-fix         POST /api/test-tool
-    ▼
-API routes (traced with neatlogs)
-    │
-    ▼
-analyzeUpdate / verifyFix                         src/lib/engine/analyze.ts
-    ├── createV1Server / createV2Server           src/servers.ts
-    ├── connectToServer                           in-memory MCP transport
-    ├── inspectServer                             listTools
-    ├── compareTools                              breaking vs non-breaking
-    ├── traceDependencies                         which workflows use a changed tool
-    └── runChainedWorkflow
-            └── synthesizeFix                     rules, then Groq if no rule matches
+Baseline + candidate MCP contracts
+  -> inspect and schema diff
+  -> trace affected workflows
+  -> replay baseline and candidate workflows
+  -> synthesize a repair
+  -> verify the repair in isolation
+  -> replay the complete workflow
 ```
 
-One analysis run inspects both mock servers, diffs their tools, traces blast radius, and replays every saved workflow on the baseline and on the candidate. If a step fails, later steps in that chain are skipped. Fix verification is two stages: the edited payload is called alone on V2, then the full workflow is replayed with that payload injected.
+The engine is designed around one failure mode: an upstream MCP input contract changes, the first agent tool call fails, and downstream steps lose the output they need. MCPGuard shows where that failure starts and tests whether a repair restores the chain.
 
-## Modules
+## Runtime surfaces
 
-### Mock servers — `src/servers.ts`
-
-`createV1Server()` and `createV2Server()` are in-process `github-mock` servers (1.0.0 and 2.0.0). V2 renames `issue_id` to `issue_number: number` on `get_issue` and `post_comment`, and adds optional `notify_author` on `post_comment`. `get_user` and `list_repositories` stay the same, so one workflow stays green on purpose.
-
-### Engine — `src/lib/engine/`
-
-| Module | Role |
+| Route | Runtime behavior |
 |---|---|
-| `connect-server.ts` | Links a client and server with `InMemoryTransport`. No ports and no child processes. |
-| `inspect-server.ts` | Calls `listTools` and normalizes name, description, and JSON Schema. |
-| `schema-diff.ts` | Classifies `tool_removed`, `parameter_removed`, `parameter_added`, `type_changed`, and `required_added` as breaking or non-breaking. |
-| `tracer.ts` | Marks a saved workflow at risk when any of its tools has a breaking change. |
-| `fixer.ts` | Rewrites arguments for renames, type coercions, and newly required fields. High confidence when a rule matches. |
-| `llm.ts` | Groq `llama-3.1-8b-instant` fallback. Returns nothing if `GROQ_API_KEY` is missing or the call fails. |
-| `analyze.ts` | `analyzeUpdate()` builds the report. `verifyFix()` runs the two-stage check. |
+| `/` | Product overview and integration status. |
+| `/test` | Interactive payload testing, audit execution, repair verification, AI fallback, and recovery-evidence capture. |
+| `/api/analyze` | Full contract audit and workflow replay. |
+| `/api/test-tool` | One candidate tool call using an editable JSON payload. |
+| `/api/verify-fix` | Two-stage verification: isolated call followed by downstream replay. |
+| `/api/ai-fix` | Controlled non-deterministic migration case using the Groq fallback. |
+| `/api/evidence-run` | One end-to-end failure-and-recovery demonstration. |
 
-### Workflows — `src/lib/workflows/store.ts`
+## Core modules
 
-Three saved contracts: triage (`get_issue` → `get_user` → `post_comment`), org explore (`list_repositories` → `get_user`), and a release comment (`post_comment`). The first and third break on V2. The second does not.
+| Module | Responsibility |
+|---|---|
+| `src/servers.ts` | In-process baseline and candidate MCP fixtures used for isolated compatibility demonstrations. |
+| `src/lib/engine/inspect-server.ts` | Normalizes server tool definitions returned by `listTools`. |
+| `src/lib/engine/schema-diff.ts` | Classifies removed tools/parameters, type shifts, and required-field changes. |
+| `src/lib/engine/tracer.ts` | Maps breaking changes to saved workflow dependencies. |
+| `src/lib/engine/analyze.ts` | Coordinates auditing, replay, repair verification, and recovery reporting. |
+| `src/lib/engine/fixer.ts` | Applies deterministic parameter migration rules and calls the fallback only when required. |
+| `src/lib/engine/llm.ts` | Calls Groq `llama-3.1-8b-instant` for non-deterministic migrations. |
+| `src/lib/telemetry.ts` | Initializes, wraps, and flushes neatlogs traces. |
 
-### HTTP and UI
+## Integration evidence
 
-- `POST /api/analyze` — full report: summary, schema changes, workflow traces, suggested fixes. Wrapped in a neatlogs `WORKFLOW` span.
-- `POST /api/verify-fix` — two-stage verification. Wrapped in a `GUARDRAIL` span.
-- `POST /api/test-tool` — one tool call on the V2 server for the failure-taxonomy sandbox.
-- `src/app/page.tsx` — dashboard sections: overview, pipeline, benchmarks, failure taxonomy, integration snippets, and the live audit with apply-and-verify.
+- **neatlogs:** audit, verification, fallback, and recovery evidence routes emit named spans.
+- **Entire:** [ENTIRE_CONTEXT.md](ENTIRE_CONTEXT.md) records graph topology, capability evidence, and current impact analysis.
+- **cfo.ai:** [BUSINESS_PLAN.md](BUSINESS_PLAN.md) contains the pricing, COGS, revenue, and runway inputs. The final external scenario or PDF is a submission artifact.
 
-Telemetry lives in `src/lib/telemetry.ts`. Without `NEATLOGS_API_KEY` it initializes neatlogs with export disabled, so local runs still finish.
+For the exact evidence-capture sequence, see [HACKATHON_EVIDENCE.md](HACKATHON_EVIDENCE.md).
 
-## Repository layout
+## Verification
 
-```text
-mcpguard/
-├── src/
-│   ├── servers.ts
-│   ├── app/
-│   │   ├── page.tsx
-│   │   ├── layout.tsx
-│   │   ├── globals.css
-│   │   └── api/{analyze,verify-fix,test-tool}/route.ts
-│   └── lib/
-│       ├── telemetry.ts
-│       ├── engine/
-│       │   ├── analyze.ts
-│       │   ├── connect-server.ts
-│       │   ├── inspect-server.ts
-│       │   ├── schema-diff.ts
-│       │   ├── tracer.ts
-│       │   ├── fixer.ts
-│       │   └── llm.ts
-│       └── workflows/store.ts
-├── tests/
-│   ├── schema-diff.test.ts
-│   ├── inspect-server.test.ts
-│   ├── guard.test.ts
-│   └── analyze.test.ts
-├── PROJECT_OVERVIEW.md
-├── TODOS.md
-├── WHAT_IS_LEFT.md
-├── ENTIRE_CONTEXT.md
-├── COLLABORATOR_GUIDE.md
-└── BUSINESS_PLAN.md
+```bash
+npm run build
+npm test
 ```
-
-## Tests
-
-`npx vitest run` — 4 files, 6 tests, all passing:
-
-- schema comparator
-- live inspection of V1 and V2
-- in-memory transport, baseline pass, candidate failure
-- chained replay, failure diagnostics, and fix verification
-
-## Sponsor integrations
-
-| Integration | Where it lives |
-|---|---|
-| neatlogs | `src/lib/telemetry.ts`, analyze and verify-fix routes |
-| Entire CLI + entire-graph | Git and Cursor hooks, [ENTIRE_CONTEXT.md](ENTIRE_CONTEXT.md) |
-| cfo.ai model | [BUSINESS_PLAN.md](BUSINESS_PLAN.md) |
-
-The dependency map, blast radius, and workflow-to-tool edges are in [ENTIRE_CONTEXT.md](ENTIRE_CONTEXT.md). Implementation status is in [WHAT_IS_LEFT.md](WHAT_IS_LEFT.md). The roadmap checkboxes are in [TODOS.md](TODOS.md).
