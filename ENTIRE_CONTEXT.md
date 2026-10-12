@@ -4,6 +4,38 @@ This map was produced with Entire CLI 0.11.4 and the entire-graph plugin v0.4.0 
 
 Index summary: 37 files parsed, 313 symbols, 686 relations. TypeScript is semantically indexed. `src/app/page.tsx` failed to parse (`E_PARSE_ERROR` on the `"use client"` directive and JSX), so dashboard-internal call edges in that file are partial. HTTP edges from the dashboard to the API routes were still recovered.
 
+## Final hackathon evidence — October 12, 2026
+
+Entire Graph v0.4.0 was run on the final working tree with semantic TypeScript support enabled. The current plugin does not provide a `health` command, so the evidence below uses its supported `impact` and `capabilities` commands.
+
+### Audit coordinator impact
+
+Command:
+
+```powershell
+entire graph impact --repo . --symbol analyzeUpdate --exclude-tests
+```
+
+Result: `analyzeUpdate` has 6 direct callers, 10 callees, 2 type consumers, 2 data flows, and 5 historically co-changing files. The caller list includes both `/api/analyze` and `/api/evidence-run`; the dependency list covers server connection, inspection, schema comparison, dependency tracing, and chained workflow replay.
+
+### Repair synthesis impact
+
+Command:
+
+```powershell
+entire graph impact --repo . --symbol synthesizeFix --file src/lib/engine/fixer.ts --exclude-tests
+```
+
+Result: `synthesizeFix` has 3 direct callers and 2 transitive callers through `runChainedWorkflow`, including both `analyzeUpdate` and `verifyFix`. Its fallback dependency is `llmFallbackFix`, demonstrating where the deterministic repair path can hand off to Groq.
+
+### Capability evidence
+
+```powershell
+entire graph capabilities --json
+```
+
+The installed graph provider reports TypeScript as a semantic language and supports `ASYNC_CALLS`, `DATA_FLOWS`, `PARAM_TYPE`, `RETURNS_TYPE`, `USES_TYPE`, and `FILE_CHANGES_WITH` relations. Graph analysis is local-only: its capability report lists no grammar downloads, hosted models, remote code fetches, or telemetry upload.
+
 ## How a compatibility run moves through the repo
 
 ```text
