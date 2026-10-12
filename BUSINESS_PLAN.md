@@ -93,4 +93,4 @@ As the AI agent ecosystem standardizes on MCP, companies face a catastrophic new
 - [x] Assign COGS categories (Groq inference, hosting, neatlogs observability).
 - [x] Set customer acquisition channels (organic GitHub stars, developer advocacy, enterprise sales).
 - [x] Verify 18-month runway calculation with $200k initial funding and Month 11 break-even.
-- [x] Export finalized cfo.ai scenario PDF/link into submission package.
+- [ ] Attach the shareable cfo.ai scenario link or exported PDF to the submission package.
