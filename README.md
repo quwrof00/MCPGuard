@@ -93,7 +93,7 @@ Entire Graph is used to understand the blast radius of the audit coordinator and
 
 ### cfo.ai
 
-The business model covers pricing, cost of goods, revenue, gross margin, runway, and break-even assumptions. See [BUSINESS_PLAN.md](BUSINESS_PLAN.md). Add a shareable cfo.ai scenario or exported PDF before submitting externally.
+The business model covers pricing, cost of goods, revenue, gross margin, runway, and break-even assumptions. See [BUSINESS_PLAN.md](BUSINESS_PLAN.md). A shareable cfo.ai scenario or exported PDF can accompany the model as supporting evidence.
 
 ## Quick start
 
