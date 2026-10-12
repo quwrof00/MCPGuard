@@ -504,6 +504,7 @@ When MCP Guard synthesizes fixes or migrates tool parameters (e.g. `{ issue_id: 
 
 The checkpoint ref itself is created by the post-commit hook on the next commit. Until that commit exists, `entire checkpoint list` has nothing to show.
 
+
 ---
 
 ## 📈 TODO 6: cfo.ai Integration (Financial Model, Unit Economics & Runway Strategy)
