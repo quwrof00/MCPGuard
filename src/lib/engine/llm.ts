@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk';
 import type { SchemaChange } from './schema-diff';
+import { withTrace } from '../telemetry';
 
 const MODEL = 'llama-3.1-8b-instant';
 
@@ -55,7 +56,14 @@ export async function llmFallbackFix(params: {
   ].join('\n');
 
   try {
-    const chat = await getClient().chat.completions.create({
+    const chat = await withTrace("groq-schema-migration", "AGENT", {
+      provider: "groq",
+      model: MODEL,
+      resolutionPath: "llm_fallback",
+      tool,
+      argumentKeys: Object.keys(args),
+      schemaChangeCount: toolChanges.length,
+    }, async () => getClient().chat.completions.create({
       model: MODEL,
       temperature: 0,
       max_tokens: 512,
@@ -63,7 +71,7 @@ export async function llmFallbackFix(params: {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-    });
+    }));
 
     const raw = (chat.choices[0]?.message?.content ?? '').trim();
     const parsed = JSON.parse(raw) as {

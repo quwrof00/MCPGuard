@@ -13,6 +13,7 @@
 - **[Hackathon MVP Status](WHAT_IS_LEFT.md)**: Feature scorecard. The hackathon checklist is complete.
 - **[Implementation Roadmap](TODOS.md)**: Engine, dashboard, neatlogs, Entire, and the cfo.ai model.
 - **[entire-graph topology](ENTIRE_CONTEXT.md)**: Import graph, blast radius, and workflow-to-tool edges.
+- **[neatHack evidence guide](HACKATHON_EVIDENCE.md)**: Live trace names, recovery proof, Entire refresh steps, and cfo.ai evidence checklist.
 
 ---
 
